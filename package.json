@@ -1,0 +1,11 @@
+{
+  "name": "@kuracord/client-tui",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.26.1",
+    "blessed": "^0.1.81",
+    "ws": "^8.5.0"
+  }
+}
