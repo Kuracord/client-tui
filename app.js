@@ -21,8 +21,8 @@ function createPopup(form, screen, label, content, withInput = false, callback) 
       },
       top: 'center',
       left: 'center',
-      width: '20%',
-      height: '25%'
+      width: '40%',
+      height: '45%'
     })
     let cancelbutton = blessed.button({
       parent: popupbox,
@@ -121,6 +121,11 @@ module.exports = class AppComponent {
       let g = list.add(guild.name)
       screen.render()
       g._id = guild.id
+    })
+    API.checkNews().then(news=>{
+      if (!news) return
+      createPopup(form, screen, "Changelog", `Author: ${news.author.username}\n${news.content}`, false, () => {})
+      screen.render()
     })
     let channelslist = blessed.list({
       border: 'line',
@@ -306,6 +311,11 @@ module.exports = class AppComponent {
       let ch = channelslist.add("#" + channel.name)
       ch._id = channel.id
       screen.render()
+    })
+    API.events.on("changelog", (news) => {
+      createPopup(form, screen, "Changelog", `Author: ${news.author.username}\n${news.content}`, false, () => {})
+      screen.render()
+      API.saveNews(news.id)
     })
     messageinput.on('focus', function() {
       messageinput.readInput();

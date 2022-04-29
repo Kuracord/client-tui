@@ -29,6 +29,7 @@ var form = blessed.form({
   label: "Kuracord"
 })
 
+Array.prototype.last = function() { return this[this.length - 1] }
 var login = new LoginComponent(form, screen)
 login.on("submit", () => {
   login.destroy()

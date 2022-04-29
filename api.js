@@ -1,6 +1,9 @@
 const axios = require("axios").default
 const EventEmitter = require("events")
 const WebSocket = require("ws")
+const fs = require("fs/promises")
+const os = require("os")
+const path = require("path")
 module.exports = class API {
   static token = null
   static user = {}
@@ -15,13 +18,19 @@ module.exports = class API {
     } catch (e) {
       if (e.response) {
         if (e.response.status.toString().startsWith("4")) throw new Error(e.response.data.message)
-        else throw new Error(e.message)
+        else throw new Error(JSON.stringify(e.response.data))
       }
     }
   }
   static async fetchUser() {
-    let req = await axios.get("http://api.keneshin.xyz/users/@me", { headers: { Authorization: this.token }})
-    this.user = req.data
+    try {
+      let req = await axios.get("http://api.keneshin.xyz/users/@me", { headers: { Authorization: this.token }})
+      this.user = req.data
+    } catch (e) {
+      if (e.response) {
+        throw new Error(JSON.stringify(e.response.data))
+      }
+    }
   }
   static async fetchChannels(id) {
     let req = await axios.get(`http://api.keneshin.xyz/guilds/${id}/channels`, { headers: { Authorization: this.token }})
@@ -52,5 +61,18 @@ module.exports = class API {
       let message = JSON.parse(data)
       if (message.op == 1) this.events.emit(message.t.toLowerCase(), message.d)
     })
+  }
+  static async checkNews() {
+    let config = require(path.join(os.homedir(), ".config/kuracord/config.json"))
+    let req = await axios.get("http://api.keneshin.xyz/news", { headers: { Authorization: this.token }, json: true })
+    if (req.data.last().id == config.lastNewsId) return null
+    config.lastNewsId = req.data.last().id
+    await fs.writeFile(path.join(os.homedir(), ".config/kuracord/config.json"), JSON.stringify(config)) 
+    return req.data.last()
+  }
+  static async saveNews(id) {
+    let config = require(path.join(os.homedir(), ".config/kuracord/config.json"))
+    config.lastNewsId = id
+    await fs.writeFile(path.join(os.homedir(), ".config/kuracord/config.json"), JSON.stringify(config))
   }
 }
