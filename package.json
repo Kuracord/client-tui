@@ -6,6 +6,7 @@
   "dependencies": {
     "axios": "^0.26.1",
     "blessed": "^0.1.81",
+    "lodash": "^4.17.21",
     "ws": "^8.5.0"
   }
 }

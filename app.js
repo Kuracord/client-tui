@@ -1,5 +1,7 @@
 const blessed = require("blessed")
 const API = require("./api.js")
+const { exec } = require("child_process")
+const _ = require("lodash")
 function getTime(date) {
   return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`
 }
@@ -266,10 +268,17 @@ module.exports = class AppComponent {
       if (!channel.messages) channel.messages = await API.fetchMessages(channel.id)
       messageslist.clearItems()
       channel.messages.forEach(message=>{
+        if (message.editedAt != null) message.content += " (edited)"
         let cont = blessed.escape(`${getTime(new Date(message.createdAt))} ${message.author.username}: ${message.content}`)
         let width = messageslist.width - 4
         let contents = cont.chunk(width)
-        contents.forEach(content=>messageslist.add(content))
+        contents.forEach(content=>{let item = messageslist.add(content); item._id = message.id })
+        if (message.attachments) message.attachments.forEach(att=>{
+          let item = messageslist.add(`Attachment: ${att.filename}`)
+          item.on("click", () => {
+            exec(`xdg-open '${att.url}'`)
+          })
+        })
         screen.render()
       })
       } catch {}
@@ -292,11 +301,67 @@ module.exports = class AppComponent {
         let cont = blessed.escape(`${getTime(new Date(message.createdAt))} ${message.author.username}: ${message.content}`)
         let width = messageslist.width - 4
         let contents = cont.chunk(width)
-        contents.forEach(content=>messageslist.add(content))
+        contents.forEach(content=>{let item = messageslist.add(content); item._id = message.id})
+        if (message.attachments) message.attachments.forEach(att=>{
+          let item = messageslist.add(`Attachment: ${att.filename}`)
+          item._id = att.id
+          item.on("click", () => {
+            exec(`xdg-open '${att.url}'`)
+          })
+        })
         messageslist.scroll(messageslist._scrollBottom())
         screen.render()
       }
       if (channel && channel.messages) channel.messages.push(message) 
+    })
+    API.events.on("message_update", (message) => {
+      let { guild } = guilds.find(({guild})=>guild.id==message.guild.id)
+      let channel = guild.channels?.find(a=>a.id==message.channel.id)
+      if (!channel) return;
+      let oldMessage = channel.messages?.find(a=>a.id==message.id)
+      if (!oldMessage) return;
+      if (message.channel.id == this.state.selectedChannel) {
+        let cont = blessed.escape(`${getTime(new Date(message.createdAt))} ${message.author.username}: ${message.content}`)
+        let width = messageslist.width - 4
+        let contents = cont.chunk(width)
+        contents.forEach((content, index) => {
+          let oldContents = blessed.escape(`${getTime(new Date(message.createdAt))} ${message.author.username}: ${oldMessage.content}`).chunk(width)
+          let item = messageslist.items.find(a=>a.getText()==oldContents[index])
+          if ((index - 1) == contents.length) content += "(edited)"
+          if ((contents.length - oldContents.length) > 0) {
+            let toRemove = oldContents.slice(contents.length - oldContents.length)
+            toRemove.forEach(value=>{
+              let index = messageslist.items.findIndex(a=>a.getText()==value)
+              if (index) {
+                delete messageslist.items[index]
+                messageslist.items = _.compact(messageslist.items)
+                screen.render()
+              }
+            })
+          }
+          if (item) item.setContent(content)
+          else item = messageslist.add(content)
+          item._id = message.id
+        })
+        screen.render()
+      }
+    })
+    API.events.on("message_delete", ({ guildId, channelId, messageId}) => {
+      let { guild } = guilds.find(({guild})=>guild.id==guildId)
+      let channel = guild.channels?.find(a=>a.id==channelId)
+      let messageIndex = channel.messages?.findIndex(a=>a.id==messageId)
+      if (channel && channel.messages) {
+        delete channel.messages[messageIndex]
+        channel.messages = _.compact(channel.messages)
+      }
+      if (channelId == this.state.selectedChannel) {
+        console.log(messageslist.items.filter(a=>a._id==messageId))
+        messageslist.items.filter(a=>a._id==messageId).forEach((item, index) => {
+          delete messageslist.items[index]
+        })
+        messageslist.items = _.compact(messageslist.items)
+        screen.render()
+      }
     })
     API.events.on("guild_create", (guild) => {
       guilds.push(guild)

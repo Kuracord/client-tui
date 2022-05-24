@@ -11,7 +11,7 @@ module.exports = class API {
   static events = new EventEmitter()
   static async login(email, pass) {
     try {
-      let req = await axios.post("http://api.keneshin.xyz/users/login", { email: email, password: pass },
+      let req = await axios.post("https://api.keneshin.xyz/users/login", { email: email, password: pass },
         { json: true })
       this.token = req.data.token
       return true
@@ -24,7 +24,7 @@ module.exports = class API {
   }
   static async fetchUser() {
     try {
-      let req = await axios.get("http://api.keneshin.xyz/users/@me", { headers: { Authorization: this.token }})
+      let req = await axios.get("https://api.keneshin.xyz/users/@me", { headers: { Authorization: this.token }})
       this.user = req.data
     } catch (e) {
       if (e.response) {
@@ -33,27 +33,27 @@ module.exports = class API {
     }
   }
   static async fetchChannels(id) {
-    let req = await axios.get(`http://api.keneshin.xyz/guilds/${id}/channels`, { headers: { Authorization: this.token }})
+    let req = await axios.get(`https://api.keneshin.xyz/guilds/${id}/channels`, { headers: { Authorization: this.token }})
     return req.data
   }
   static async fetchMessages(id) {
-    let req = await axios.get(`http://api.keneshin.xyz/channels/${id}/messages`, { headers: { Authorization: this.token }})
+    let req = await axios.get(`https://api.keneshin.xyz/channels/${id}/messages`, { headers: { Authorization: this.token }})
     return req.data
   }
   static async sendMessage(id, content) {
-    let req = await axios.post(`http://api.keneshin.xyz/channels/${id}/messages`, { content }, { json: true, headers: { Authorization: this.token }})
+    let req = await axios.post(`https://api.keneshin.xyz/channels/${id}/messages`, { content }, { json: true, headers: { Authorization: this.token }})
     return req.data
   }
   static async createGuild(name) {
-    let req = await axios.post(`http://api.keneshin.xyz/guilds`, { name, icon: "" }, { json: true, headers: { Authorization: this.token }})
+    let req = await axios.post(`https://api.keneshin.xyz/guilds`, { name, icon: "" }, { json: true, headers: { Authorization: this.token }})
     return req.data
   }
   static async createChannel(id, name) {
-    let req = await axios.post(`http://api.keneshin.xyz/guilds/${id}/channels`, { name }, { json: true, headers: { Authorization: this.token }})
+    let req = await axios.post(`https://api.keneshin.xyz/guilds/${id}/channels`, { name }, { json: true, headers: { Authorization: this.token }})
     return req.data
   }
   static gatewayConnect() {
-    this.ws = new WebSocket("ws://gateway.keneshin.xyz")
+    this.ws = new WebSocket("wss://gateway.keneshin.xyz")
     this.ws.on("open", () => {
       this.ws.send(JSON.stringify({ op: 0, d: { token: this.token } }))
     })
@@ -64,7 +64,8 @@ module.exports = class API {
   }
   static async checkNews() {
     let config = require(path.join(os.homedir(), ".config/kuracord/config.json"))
-    let req = await axios.get("http://api.keneshin.xyz/news", { headers: { Authorization: this.token }, json: true })
+    let req = await axios.get("https://api.keneshin.xyz/news", { headers: { Authorization: this.token }, json: true })
+    if (!req.data.last()) return null
     if (req.data.last().id == config.lastNewsId) return null
     config.lastNewsId = req.data.last().id
     await fs.writeFile(path.join(os.homedir(), ".config/kuracord/config.json"), JSON.stringify(config)) 
